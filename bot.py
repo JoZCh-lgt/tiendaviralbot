@@ -74,7 +74,7 @@ PACKS_GRATIS = {
 }
 
 PACKS_VIP = {
-    "v1": {"nombre": "💎 Sophie Raein 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/cnha2a6qji2ysep/SophieRain.zip/file"},
+    "v1": {"nombre": "💎 Sophie Raein 10 📹 + 10 📸", "precio": "0.50", "link": "https://www.mediafire.com/file/cnha2a6qji2ysep/SophieRain.zip/file"},
     "v2": {"nombre": "💎 Lexi Marvel 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/6igmvzfxxjypg62/Lexi+Marvel.zip/file"},
     "v3": {"nombre": "💎 EmaraB 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/9939prl9lrb7zvm/EmaraB.zip/file"},
     "v4": {"nombre": "💎 Tana Rein 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/s8mo3quupi2arcg/Tana+Rein.zip/file"},
