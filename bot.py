@@ -1,66 +1,26 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from telebot import types
+from flask import Flask
+import threading
+import os
 import requests
 
-# 1. Pega tu Token de Telegram
-TOKEN_TELEGRAM = '8281697686:AAEBf29VABSA1BH6D7-jX8WEas4xXndGJic'
-bot = telebot.TeleBot(TOKEN_TELEGRAM)
-
-# 2. Pega tu API Token de CryptoBot
-TOKEN_CRYPTO = '578542:AA8vQa975AdFGA0d6A5J9CaY6p4tKMyAmCv'
-URL_CRYPTO = "https://pay.crypt.bot/api/"
-
-# Memoria para autolimpieza
-historial_imagenes = {}
-
 # ==========================================
-# 🛠️ DICCIONARIO MAESTRO DE TEXTOS (ES/EN)
+# 1. TUS TOKENS (¡REEMPLAZA ESTO!)
 # ==========================================
-textos = {
-    "es": {
-        "saludo": "¡Hola! Bienvenido a la Tienda Viral 🚀. Elige una opción:",
-        "btn_descargas": "📥 Descargas Gratis",
-        "btn_exclusivo": "💎 Contenido VIP",
-        "volver": "🔙 Volver",
-        "titulo_gratis": "📥 ZONA DE MUESTRAS GRATUITAS\n\nSelecciona la galería que deseas ver:",
-        "titulo_vip": "🔒 ZONA VIP EXCLUSIVA\n\nAdquiere el paquete completo en ZIP:",
-        "msj_volver": "Has vuelto al menú principal 🏠. Elige una opción:",
-        "generando": "⏳ Conectando con la blockchain para generar tu factura...",
-        "factura_lista": "✅ Factura de **{} USDT** lista.\n\n1️⃣ Haz clic en 'Pagar'.\n2️⃣ Paga en CryptoBot.\n3️⃣ Presiona 'Ya pagué'.",
-        "btn_pagar": "💳 Pagar con CryptoBot",
-        "btn_verificar": "✅ Ya pagué (Verificar)",
-        "abriendo": "✅ Abriendo galería de {}...",
-        "caption_gratis": "🎁 Muestra gratuita: {}\n\n👉 *Si te gusta, compra el ZIP en la Zona VIP.*",
-        "pago_ok": "✅ ¡PAGO APROBADO! 🎉\n\nEnlace de descarga ZIP:\n👉 {}",
-        "espera_pago": "⏳ Aún no detectamos el pago. Espera unos segundos e intenta de nuevo.",
-        "error_factura": "❌ Error al crear la factura.",
-        "no_links": "⚠️ Esta carpeta aún no tiene links configurados."
-    },
-    "en": {
-        "saludo": "Hello! Welcome to the Viral Store 🚀. Choose an option:",
-        "btn_descargas": "📥 Free Downloads",
-        "btn_exclusivo": "💎 VIP Content",
-        "volver": "🔙 Back",
-        "titulo_gratis": "📥 FREE SAMPLES ZONE\n\nSelect the gallery you want to view:",
-        "titulo_vip": "🔒 EXCLUSIVE VIP ZONE\n\nGet the full ZIP pack instantly:",
-        "msj_volver": "Back to main menu 🏠. Choose an option:",
-        "generando": "⏳ Connecting to blockchain to generate your invoice...",
-        "factura_lista": "✅ **{} USDT** Invoice ready.\n\n1️⃣ Click 'Pay Now'.\n2️⃣ Pay in CryptoBot.\n3️⃣ Press 'I paid'.",
-        "btn_pagar": "💳 Pay with CryptoBot",
-        "btn_verificar": "✅ I paid (Verify)",
-        "abriendo": "✅ Opening {} gallery...",
-        "caption_gratis": "🎁 Free sample: {}\n\n👉 *If you like it, get the full ZIP in the VIP Zone.*",
-        "pago_ok": "✅ PAYMENT APPROVED! 🎉\n\nZIP download link:\n👉 {}",
-        "espera_pago": "⏳ Payment not detected yet. Please wait a few seconds and try again.",
-        "error_factura": "❌ Error creating invoice.",
-        "no_links": "⚠️ No links configured for this folder."
-    }
-}
+TOKEN = "8281697686:AAEBf29VABSA1BH6D7-jX8WEas4xXndGJic" 
+CRYPTO_TOKEN = "578542:AA8vQa975AdFGA0d6A5J9CaY6p4tKMyAmCv" 
+
+bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
+
+user_langs = {} # Memoria de idiomas
 
 # ==========================================
-# 📁 CONFIGURACIÓN DE CARPETAS (10 GRATIS / 10 VIP)
+# 2. BASE DE DATOS DE LINKS
 # ==========================================
-PACKS_GRATIS = {
+# 🎁 LINKS GRATIS (10 carpetas x 5 espacios)
+PACK_GRATIS = {
     "g1": {"nombre": "📁 Sophie Rain", "imgs": ["https://postimg.cc/PvWWZ53N", "https://postimg.cc/fV2xYFKh", "https://postimg.cc/RJBfMzS4", "https://postimg.cc/756zP9kC", "https://postimg.cc/CBjBr6jX"]},
     "g2": {"nombre": "📁 Lexi Marvel", "imgs": ["https://i.postimg.cc/fy36SQKT/1.jpg", "https://postimg.cc/xX469qWr", "https://postimg.cc/zyV9wmrp", "https://postimg.cc/9zCK8w2z", "https://postimg.cc/hJVZMc3C"]},
     "g3": {"nombre": "📁 EmaraB", "imgs": ["https://postimg.cc/9Dfjx830", "https://postimg.cc/TLn8yBby", "https://postimg.cc/n916270F", "https://postimg.cc/svjXrJFW", "https://postimg.cc/Xrh79Srg",]},
@@ -71,10 +31,10 @@ PACKS_GRATIS = {
     "g8": {"nombre": "📁 Breckie Hill", "imgs": ["https://postimg.cc/2qwhzScz", "https://postimg.cc/WDTBC5q9", "https://postimg.cc/BPLkHyRs", "https://postimg.cc/dDpzwsTs", "https://postimg.cc/JsWvHpqd",]},
     "g9": {"nombre": "📁 Hannah Palmer", "imgs": ["https://postimg.cc/MMjmDSKw", "https://postimg.cc/kByFww9M", "https://postimg.cc/QK31JKyH", "https://postimg.cc/jD5NcbZz", "https://postimg.cc/34gDNJxK",]},
     "g10": {"nombre": "📁 Kirstentoosweet", "imgs": ["https://postimg.cc/sQkd6sYg", "https://postimg.cc/ZCFtHkCt", "https://postimg.cc/G4X00kP2", "https://postimg.cc/DJbRbHtN", "https://postimg.cc/dZ2X5dtc",]}
-}
 
+# 💎 LINKS VIP (10 carpetas individuales + 1 Todo en Uno)
 PACKS_VIP = {
-    "v1": {"nombre": "💎 Sophie Raein 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/cnha2a6qji2ysep/SophieRain.zip/file"},
+    "v1": {"nombre": "💎 Sophie Raein 10 📹 + 10 📸", "precio": "0.50", "link": "https://www.mediafire.com/file/cnha2a6qji2ysep/SophieRain.zip/file"},
     "v2": {"nombre": "💎 Lexi Marvel 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/6igmvzfxxjypg62/Lexi+Marvel.zip/file"},
     "v3": {"nombre": "💎 EmaraB 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/9939prl9lrb7zvm/EmaraB.zip/file"},
     "v4": {"nombre": "💎 Tana Rein 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/s8mo3quupi2arcg/Tana+Rein.zip/file"},
@@ -84,126 +44,213 @@ PACKS_VIP = {
     "v8": {"nombre": "💎 Breckie Hill 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/tpu2xcpwyu771qx/Breckie+Hill.zip/file"},
     "v9": {"nombre": "💎 Hanna Palmer 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/ta9krljkn20vt9p/Hanna+Palmer.zip/file"},
     "v10": {"nombre": "💎 Kirstentoosweet 10 📹 + 10 📸", "precio": "5.00", "link": "https://www.mediafire.com/file/bf2u4lja9htkshn/Kirstentoosweet.zip/file"},
-    "v11": {"nombre": "💎 MEGA PACK ALL IN ONE", "precio": "30.00", "link": "https://www.mediafire.com/file/ubhl92ic9alix8v/All+in+one.zip/file"}
-}
-# --- FUNCIONES DE INTERFAZ ---
-def crear_menu_principal(lang):
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(textos[lang]["btn_descargas"], callback_data=f"menu_gratis_{lang}"))
-    markup.add(InlineKeyboardButton(textos[lang]["btn_exclusivo"], callback_data=f"menu_vip_{lang}"))
-    return markup
+    "v11": {"nombre": "💎 MEGA PACK ALL IN ONE", "precio": "30.00", "link": "https://www.mediafire.com/file/ubhl92ic9alix8v/All+in+one.zip/file"}}
 
+# ==========================================
+# 3. TEXTOS (INGLÉS / ESPAÑOL)
+# ==========================================
+T = {
+    "en": {
+        "main_menu": "🔥 **MAIN MENU** 🔥\nChoose an option:",
+        "btn_free": "🎁 Free Content",
+        "btn_vip": "💎 VIP Content",
+        "menu_free": "🎁 **FREE VAULT**\nSelect a folder to get your 5 links:",
+        "menu_vip": "💎 **VIP VAULT**\nSelect a premium folder:",
+        "folder": "Folder",
+        "btn_todo": "💎 ALL IN ONE ($30)",
+        "btn_back": "⬅️ Back to Menu",
+        "pay_title": "Select payment method for",
+        "btn_stars": "⭐️ Pay with Stars",
+        "btn_usdt": "💵 Pay with USDT",
+        "pay_crypto": "🔗 Click below to pay with USDT. After paying, click 'Verify Payment'.",
+        "btn_pay_url": "💳 Pay Here",
+        "btn_verify": "✅ Verify Payment",
+        "success": "✅ **PAYMENT SUCCESSFUL!**\n\nHere is your VIP access:\n",
+        "wait": "⏳ Payment not detected yet. Try again in a few seconds.",
+        "free_msg": "Here are your 5 free links:\n\n"
+    },
+    "es": {
+        "main_menu": "🔥 **MENÚ PRINCIPAL** 🔥\nElige una opción:",
+        "btn_free": "🎁 Contenido Gratis",
+        "btn_vip": "💎 Contenido VIP",
+        "menu_free": "🎁 **BÓVEDA GRATIS**\nSelecciona una carpeta para tus 5 links:",
+        "menu_vip": "💎 **BÓVEDA VIP**\nSelecciona una carpeta premium:",
+        "folder": "Carpeta",
+        "btn_todo": "💎 TODO EN UNO ($30)",
+        "btn_back": "⬅️ Volver al Menú",
+        "pay_title": "Selecciona método de pago para",
+        "btn_stars": "⭐️ Pagar con Estrellas",
+        "btn_usdt": "💵 Pagar con USDT",
+        "pay_crypto": "🔗 Haz clic abajo para pagar con USDT. Luego haz clic en 'Verificar Pago'.",
+        "btn_pay_url": "💳 Pagar Aquí",
+        "btn_verify": "✅ Verificar Pago",
+        "success": "✅ **¡PAGO EXITOSO!**\n\nAquí tienes tu acceso VIP:\n",
+        "wait": "⏳ Aún no detectamos el pago. Espera unos segundos y vuelve a verificar.",
+        "free_msg": "Aquí están tus 5 links gratis:\n\n"
+    }
+}
+
+# ==========================================
+# 4. FUNCIONES DE CRYPTOBOT API
+# ==========================================
+def create_crypto_invoice(amount, item_id):
+    headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
+    payload = {"asset": "USDT", "amount": str(amount), "description": f"VIP Access - {item_id}"}
+    try:
+        res = requests.post("https://pay.crypt.bot/api/createInvoice", headers=headers, json=payload).json()
+        if res.get("ok"):
+            return res["result"]["pay_url"], res["result"]["invoice_id"]
+    except:
+        pass
+    return None, None
+
+def check_crypto_payment(invoice_id):
+    headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
+    try:
+        res = requests.get(f"https://pay.crypt.bot/api/getInvoices?invoice_ids={invoice_id}", headers=headers).json()
+        if res.get("ok") and len(res["result"]["items"]) > 0:
+            return res["result"]["items"][0]["status"] == "paid"
+    except:
+        pass
+    return False
+
+# ==========================================
+# 5. LÓGICA DEL BOT
+# ==========================================
+@app.route('/')
+def index():
+    return "Máquina VIP 100% Automática (Estrellas + Crypto) Online 🚀"
+
+# Comando /start - Idiomas
 @bot.message_handler(commands=['start'])
-def enviar_idiomas(message):
-    markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es"), InlineKeyboardButton("🇺🇸 English", callback_data="lang_en"))
-    bot.reply_to(message, "🌍 Choose language / Elige idioma:", reply_markup=markup)
+def send_welcome(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🇺🇸 English", callback_query_data="lang_en"),
+        types.InlineKeyboardButton("🇪🇸 Español", callback_query_data="lang_es")
+    )
+    bot.send_message(message.chat.id, "Select your language / Selecciona tu idioma:", reply_markup=markup)
+
+def show_main_menu(chat_id, message_id, lang):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton(T[lang]["btn_free"], callback_query_data="menu_free"),
+        types.InlineKeyboardButton(T[lang]["btn_vip"], callback_query_data="menu_vip")
+    )
+    bot.edit_message_text(T[lang]["main_menu"], chat_id, message_id, parse_mode="Markdown", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: True)
-def responder_botones(call):
+def callback_handler(call):
     chat_id = call.message.chat.id
     msg_id = call.message.message_id
-    data = call.data.split("_")
+    data = call.data
+    lang = user_langs.get(chat_id, "en") # Por defecto inglés
+
+    # 1. Configurar Idioma
+    if data in ["lang_en", "lang_es"]:
+        user_langs[chat_id] = "en" if data == "lang_en" else "es"
+        show_main_menu(chat_id, msg_id, user_langs[chat_id])
     
-    # 1. Selección inicial de idioma
-    if data[0] == "lang":
-        lang = data[1]
-        bot.delete_message(chat_id, msg_id)
-        bot.send_message(chat_id, textos[lang]["saludo"], reply_markup=crear_menu_principal(lang))
+    # 2. Volver al Menú
+    elif data == "back_main":
+        show_main_menu(chat_id, msg_id, lang)
 
-    # 2. Volver al inicio (manteniendo el idioma)
-    elif data[0] == "volver":
-        lang = data[1]
-        bot.edit_message_text(textos[lang]["msj_volver"], chat_id, msg_id, reply_markup=crear_menu_principal(lang))
+    # 3. Menú Gratis (10 carpetas)
+    elif data == "menu_free":
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        buttons = [types.InlineKeyboardButton(f"📁 {T[lang]['folder']} {i}", callback_query_data=f"getfree_{i}") for i in range(1, 11)]
+        markup.add(*buttons)
+        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="back_main"))
+        bot.edit_message_text(T[lang]["menu_free"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-    # 3. Menú de Descargas Gratis
-    elif data[0] == "menu" and data[1] == "gratis":
-        lang = data[2]
-        markup = InlineKeyboardMarkup(row_width=1)
-        for id_p, p in PACKS_GRATIS.items():
-            markup.add(InlineKeyboardButton(p["nombre"], callback_data=f"show_{id_p}_{lang}"))
-        markup.add(InlineKeyboardButton(textos[lang]["volver"], callback_data=f"volver_{lang}"))
-        bot.edit_message_text(textos[lang]["titulo_gratis"], chat_id, msg_id, reply_markup=markup)
+    # 4. Entregar Gratis
+    elif data.startswith("getfree_"):
+        folder_num = data.split("_")[1]
+        links = LINKS_GRATIS[f"free_{folder_num}"]
+        mensaje = f"🎁 {T[lang]['free_msg']}" + "\n".join([f"{i+1}. {l}" for i, l in enumerate(links)])
+        bot.send_message(chat_id, mensaje)
 
-    # 4. Menú VIP
-    elif data[0] == "menu" and data[1] == "vip":
-        lang = data[2]
-        markup = InlineKeyboardMarkup(row_width=1)
-        for id_p, p in PACKS_VIP.items():
-            markup.add(InlineKeyboardButton(f"{p['nombre']} - ${p['precio']} USDT", callback_data=f"buy_{id_p}_{lang}"))
-        markup.add(InlineKeyboardButton(textos[lang]["volver"], callback_data=f"volver_{lang}"))
-        bot.edit_message_text(textos[lang]["titulo_vip"], chat_id, msg_id, reply_markup=markup)
+    # 5. Menú VIP (10 carpetas + Todo en Uno)
+    elif data == "menu_vip":
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        buttons = [types.InlineKeyboardButton(f"🔒 {T[lang]['folder']} {i} ($5)", callback_query_data=f"paymenu_vip_{i}") for i in range(1, 11)]
+        markup.add(*buttons)
+        markup.add(types.InlineKeyboardButton(T[lang]["btn_todo"], callback_query_data="paymenu_vip_todo"))
+        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="back_main"))
+        bot.edit_message_text(T[lang]["menu_vip"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-    # 5. Mostrar Álbum (Media Group) + Autolimpieza
-    elif data[0] == "show":
-        id_p, lang = data[1], data[2]
-        pack = PACKS_GRATIS[id_p]
+    # 6. Selección de Método de Pago
+    elif data.startswith("paymenu_"):
+        item_id = data.replace("paymenu_", "")
+        stars_p = 1500 if item_id == "vip_todo" else 250
+        usdt_p = 30 if item_id == "vip_todo" else 5
+        nombre = "ALL IN ONE" if item_id == "vip_todo" else f"{T[lang]['folder']} {item_id.split('_')[1]}"
         
-        if "LINK_" in pack['imgs'][0]:
-            bot.answer_callback_query(call.id, textos[lang]["no_links"], show_alert=True)
-            return
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton(f"{T[lang]['btn_stars']} ({stars_p} ⭐️)", callback_query_data=f"stars_{item_id}"),
+            types.InlineKeyboardButton(f"{T[lang]['btn_usdt']} (${usdt_p})", callback_query_data=f"crypto_{item_id}_{usdt_p}"),
+            types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="menu_vip")
+        )
+        bot.edit_message_text(f"💳 {T[lang]['pay_title']} **{nombre}**:", chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-        # Limpiar mensajes anteriores
-        if chat_id in historial_imagenes:
-            for m_id in historial_imagenes[chat_id]:
-                try: bot.delete_message(chat_id, m_id)
-                except: pass
-        historial_imagenes[chat_id] = []
-
-        m_aviso = bot.send_message(chat_id, textos[lang]["abriendo"].format(pack['nombre']))
-        album = [InputMediaPhoto(link) for link in pack['imgs']]
-        album[0].caption = textos[lang]["caption_gratis"].format(pack['nombre'])
-        album[0].parse_mode = "Markdown"
+    # 7. Factura de Estrellas (Telegram Native)
+    elif data.startswith("stars_"):
+        item_id = data.replace("stars_", "")
+        stars_p = 1500 if item_id == "vip_todo" else 250
+        nombre = "ALL IN ONE" if item_id == "vip_todo" else f"VIP {item_id.split('_')[1]}"
         
-        m_album = bot.send_media_group(chat_id, album)
-        historial_imagenes[chat_id].append(m_aviso.message_id)
-        for m in m_album: historial_imagenes[chat_id].append(m.message_id)
+        bot.send_invoice(chat_id, title=nombre, description="VIP Access 🔓", provider_token="", currency="XTR", 
+                         prices=[types.LabeledPrice(label="VIP", amount=stars_p)], payload=f"check_{item_id}")
 
-    # 6. Generar Factura Crypto
-    elif data[0] == "buy":
-        id_p, lang = data[1], data[2]
-        pack = PACKS_VIP[id_p]
-        bot.send_message(chat_id, textos[lang]["generando"])
+    # 8. Factura de USDT (CryptoBot)
+    elif data.startswith("crypto_"):
+        partes = data.split("_") # crypto_vip_1_5 (ejemplo)
+        item_id = f"{partes[1]}_{partes[2]}" # vip_1 o vip_todo
+        usdt_p = partes[3] if len(partes) > 3 else "30" # Precio
         
-        headers = {"Crypto-Pay-API-Token": TOKEN_CRYPTO}
-        payload = {"asset": "USDT", "amount": pack['precio'], "description": pack['nombre']}
+        bot.edit_message_text("⏳ Generating secure invoice...", chat_id, msg_id)
+        pay_url, invoice_id = create_crypto_invoice(usdt_p, item_id)
         
-        try:
-            res = requests.post(URL_CRYPTO + "createInvoice", headers=headers, data=payload).json()
-            if res.get("ok"):
-                inv_id = res["result"]["invoice_id"]
-                markup = InlineKeyboardMarkup()
-                markup.add(InlineKeyboardButton(textos[lang]["btn_pagar"], url=res["result"]["pay_url"]))
-                markup.add(InlineKeyboardButton(textos[lang]["btn_verificar"], callback_data=f"check_{inv_id}_{id_p}_{lang}"))
-                bot.send_message(chat_id, textos[lang]["factura_lista"].format(pack['precio']), parse_mode="Markdown", reply_markup=markup)
-        except: bot.send_message(chat_id, textos[lang]["error_factura"])
+        if pay_url:
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                types.InlineKeyboardButton(T[lang]["btn_pay_url"], url=pay_url),
+                types.InlineKeyboardButton(T[lang]["btn_verify"], callback_query_data=f"verify_{invoice_id}_{item_id}"),
+                types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="menu_vip")
+            )
+            bot.edit_message_text(T[lang]["pay_crypto"], chat_id, msg_id, reply_markup=markup)
 
-    # 7. Verificar Pago
-    elif data[0] == "check":
-        inv_id, id_p, lang = data[1], data[2], data[3]
-        headers = {"Crypto-Pay-API-Token": TOKEN_CRYPTO}
-        try:
-            res = requests.get(URL_CRYPTO + "getInvoices", headers=headers, params={"invoice_ids": inv_id}).json()
-            if res.get("ok") and res["result"]["items"][0]["status"] == "paid":
-                bot.edit_message_text(textos[lang]["pago_ok"].format(PACKS_VIP[id_p]["link"]), chat_id, msg_id)
-            else:
-                bot.answer_callback_query(call.id, textos[lang]["espera_pago"], show_alert=True)
-        except: pass
+    # 9. Verificar Pago USDT
+    elif data.startswith("verify_"):
+        _, invoice_id, item_tipo, item_num = data.split("_")
+        item_id = f"{item_tipo}_{item_num}"
+        
+        if check_crypto_payment(invoice_id):
+            bot.send_message(chat_id, f"{T[lang]['success']}{LINKS_VIP[item_id]}", parse_mode="Markdown")
+            bot.edit_message_text("✅ Acces Granted.", chat_id, msg_id) # Borra los botones para evitar doble entrega
+        else:
+            bot.answer_callback_query(call.id, T[lang]["wait"], show_alert=True)
 
-# --- EL CORAZÓN PARA LA NUBE (FLASK) ---
-from flask import Flask
-import threading
+# ==========================================
+# 6. VERIFICAR PAGO ESTRELLAS
+# ==========================================
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def checkout(pre_checkout_query):
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
-app = Flask(__name__)
+@bot.message_handler(content_types=['successful_payment'])
+def got_payment(message):
+    chat_id = message.chat.id
+    lang = user_langs.get(chat_id, "en")
+    item_id = message.successful_payment.invoice_payload.replace("check_", "")
+    bot.send_message(chat_id, f"{T[lang]['success']}{LINKS_VIP[item_id]}", parse_mode="Markdown")
 
-@app.route('/')
-def home():
-    return "¡Mi Tienda Viral está viva y trabajando 24/7!"
+# Ejecución
+def run_bot():
+    bot.infinity_polling()
 
-def run_flask():
-    app.run(host="0.0.0.0", port=10000)
-
-threading.Thread(target=run_flask).start()
-
-print("¡La Tienda Cripto está lista para la Nube!")
-bot.infinity_polling()
+if __name__ == "__main__":
+    t = threading.Thread(target=run_bot)
+    t.start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
