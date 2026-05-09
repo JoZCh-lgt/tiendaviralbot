@@ -218,7 +218,7 @@ def callback_handler(call):
         titulo_limpio = pack['nombre'].replace("💎", "").strip()[:32] 
         
         bot.send_invoice(chat_id, title=titulo_limpio, description="VIP Access 🔓", provider_token="", currency="XTR", 
-                         prices=[types.LabeledPrice(label="VIP", amount=stars_p)], payload=f"check_{item_id}")
+                         prices=[types.LabeledPrice(label="VIP", amount=stars_p)], invoice_payload=f"check_{item_id}")
 
     # 8. Factura de USDT
     elif data.startswith("crypto_"):
