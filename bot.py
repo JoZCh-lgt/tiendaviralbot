@@ -56,7 +56,7 @@ T = {
         "main_menu": "🔥 **MAIN MENU** 🔥\nChoose an option:",
         "btn_free": "🎁 Free Content",
         "btn_vip": "💎 VIP Content",
-        "menu_free": "🎁 **FREE VAULT**\nSelect a folder to get your 5 links:",
+        "menu_free": "🎁 **FREE VAULT**\nSelect a folder:",
         "menu_vip": "💎 **VIP VAULT**\nSelect a premium folder:",
         "btn_back": "⬅️ Back to Menu",
         "pay_title": "Select payment method for",
@@ -67,13 +67,13 @@ T = {
         "btn_verify": "✅ Verify Payment",
         "success": "✅ **PAYMENT SUCCESSFUL!**\n\nHere is your VIP access:\n",
         "wait": "⏳ Payment not detected yet. Try again in a few seconds.",
-        "free_msg": "Here are your free links:\n\n"
+        "free_msg": "Enjoy your free preview! 🎁\n"
     },
     "es": {
         "main_menu": "🔥 **MENÚ PRINCIPAL** 🔥\nElige una opción:",
         "btn_free": "🎁 Contenido Gratis",
         "btn_vip": "💎 Contenido VIP",
-        "menu_free": "🎁 **BÓVEDA GRATIS**\nSelecciona una carpeta para tus links:",
+        "menu_free": "🎁 **BÓVEDA GRATIS**\nSelecciona una carpeta:",
         "menu_vip": "💎 **BÓVEDA VIP**\nSelecciona una carpeta premium:",
         "btn_back": "⬅️ Volver al Menú",
         "pay_title": "Selecciona método de pago para",
@@ -84,7 +84,7 @@ T = {
         "btn_verify": "✅ Verificar Pago",
         "success": "✅ **¡PAGO EXITOSO!**\n\nAquí tienes tu acceso VIP:\n",
         "wait": "⏳ Aún no detectamos el pago. Espera unos segundos y vuelve a verificar.",
-        "free_msg": "Aquí están tus links gratis:\n\n"
+        "free_msg": "¡Disfruta tu contenido gratis! 🎁\n"
     }
 }
 
@@ -161,12 +161,29 @@ def callback_handler(call):
         markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="back_main"))
         bot.edit_message_text(T[lang]["menu_free"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-    # 4. Entregar Gratis
+    # 4. Entregar Gratis (COMO ÁLBUM DE FOTOS)
     elif data.startswith("getfree_"):
         key = data.replace("getfree_", "")
         pack = PACK_GRATIS[key]
-        mensaje = f"**{pack['nombre']}**\n\n{T[lang]['free_msg']}" + "\n".join([f"{i+1}. {l}" for i, l in enumerate(pack['imgs'])])
-        bot.send_message(chat_id, mensaje, parse_mode="Markdown")
+        
+        # Le avisamos al usuario que se está cargando para que no se desespere
+        bot.send_message(chat_id, "⏳...")
+        
+        try:
+            # Preparamos el álbum
+            media_group = []
+            for i, url in enumerate(pack['imgs']):
+                # Ponemos el texto de saludo solo en la primera foto
+                caption = f"🎁 **{pack['nombre']}**\n{T[lang]['free_msg']}" if i == 0 else None
+                media_group.append(types.InputMediaPhoto(media=url, caption=caption, parse_mode="Markdown"))
+            
+            # Enviamos el álbum
+            bot.send_media_group(chat_id, media=media_group)
+        
+        except Exception as e:
+            # Si falla (porque no son links .jpg o .png directos), mandamos como texto
+            mensaje_error = f"⚠️ Nota: Para ver estas imágenes como un álbum, asegúrate de configurar los **Enlaces Directos** en tu código.\n\n🎁 **{pack['nombre']}**\n" + "\n".join([f"{i+1}. {l}" for i, l in enumerate(pack['imgs'])])
+            bot.send_message(chat_id, mensaje_error, parse_mode="Markdown")
 
     # 5. Menú VIP (Lee los botones automáticamente)
     elif data == "menu_vip":
@@ -176,12 +193,11 @@ def callback_handler(call):
         markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="back_main"))
         bot.edit_message_text(T[lang]["menu_vip"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-    # 6. Selección de Método de Pago (El Paso Intermedio)
+    # 6. Selección de Método de Pago
     elif data.startswith("paymenu_"):
         item_id = data.replace("paymenu_", "")
         pack = PACKS_VIP[item_id]
         
-        # Calcular estrellas automáticamente
         precio_usd = float(pack["precio"])
         stars_p = int(precio_usd * 50)
         
@@ -193,7 +209,7 @@ def callback_handler(call):
         )
         bot.edit_message_text(f"💳 {T[lang]['pay_title']} **{pack['nombre']}**:", chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
-    # 7. Factura de Estrellas (Telegram Native)
+    # 7. Factura de Estrellas
     elif data.startswith("stars_"):
         item_id = data.replace("stars_", "")
         pack = PACKS_VIP[item_id]
@@ -204,7 +220,7 @@ def callback_handler(call):
         bot.send_invoice(chat_id, title=titulo_limpio, description="VIP Access 🔓", provider_token="", currency="XTR", 
                          prices=[types.LabeledPrice(label="VIP", amount=stars_p)], payload=f"check_{item_id}")
 
-    # 8. Factura de USDT (CryptoBot)
+    # 8. Factura de USDT
     elif data.startswith("crypto_"):
         item_id = data.replace("crypto_", "")
         pack = PACKS_VIP[item_id]
