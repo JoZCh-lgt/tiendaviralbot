@@ -17,7 +17,7 @@ app = Flask(__name__)
 user_langs = {} # Memoria de idiomas
 
 # ==========================================
-# 2. BASE DE DATOS DE LINKS (CORREGIDA)
+# 2. BASE DE DATOS DE LINKS
 # ==========================================
 # 🎁 LINKS GRATIS (10 carpetas x 5 espacios)
 PACK_GRATIS = {
@@ -31,7 +31,7 @@ PACK_GRATIS = {
     "g8": {"nombre": "📁 Breckie Hill", "imgs": ["https://postimg.cc/2qwhzScz", "https://postimg.cc/WDTBC5q9", "https://postimg.cc/BPLkHyRs", "https://postimg.cc/dDpzwsTs", "https://postimg.cc/JsWvHpqd"]},
     "g9": {"nombre": "📁 Hannah Palmer", "imgs": ["https://postimg.cc/MMjmDSKw", "https://postimg.cc/kByFww9M", "https://postimg.cc/QK31JKyH", "https://postimg.cc/jD5NcbZz", "https://postimg.cc/34gDNJxK"]},
     "g10": {"nombre": "📁 Kirstentoosweet", "imgs": ["https://postimg.cc/sQkd6sYg", "https://postimg.cc/ZCFtHkCt", "https://postimg.cc/G4X00kP2", "https://postimg.cc/DJbRbHtN", "https://postimg.cc/dZ2X5dtc"]}
-} # <--- Faltaba esta llave para cerrar el bloque gratis
+}
 
 # 💎 LINKS VIP (10 carpetas individuales + 1 Todo en Uno)
 PACKS_VIP = {
@@ -124,16 +124,16 @@ def index():
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("🇺🇸 English", callback_query_data="lang_en"),
-        types.InlineKeyboardButton("🇪🇸 Español", callback_query_data="lang_es")
+        types.InlineKeyboardButton("🇺🇸 English", callback_data="lang_en"),
+        types.InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es")
     )
     bot.send_message(message.chat.id, "Select your language / Selecciona tu idioma:", reply_markup=markup)
 
 def show_main_menu(chat_id, message_id, lang):
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton(T[lang]["btn_free"], callback_query_data="menu_free"),
-        types.InlineKeyboardButton(T[lang]["btn_vip"], callback_query_data="menu_vip")
+        types.InlineKeyboardButton(T[lang]["btn_free"], callback_data="menu_free"),
+        types.InlineKeyboardButton(T[lang]["btn_vip"], callback_data="menu_vip")
     )
     bot.edit_message_text(T[lang]["main_menu"], chat_id, message_id, parse_mode="Markdown", reply_markup=markup)
 
@@ -153,12 +153,12 @@ def callback_handler(call):
     elif data == "back_main":
         show_main_menu(chat_id, msg_id, lang)
 
-    # 3. Menú Gratis (Lee los botones de tu PACK_GRATIS automáticamente)
+    # 3. Menú Gratis (Lee los botones automáticamente)
     elif data == "menu_free":
         markup = types.InlineKeyboardMarkup(row_width=2)
-        buttons = [types.InlineKeyboardButton(pack["nombre"], callback_query_data=f"getfree_{key}") for key, pack in PACK_GRATIS.items()]
+        buttons = [types.InlineKeyboardButton(pack["nombre"], callback_data=f"getfree_{key}") for key, pack in PACK_GRATIS.items()]
         markup.add(*buttons)
-        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="back_main"))
+        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="back_main"))
         bot.edit_message_text(T[lang]["menu_free"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
     # 4. Entregar Gratis
@@ -168,12 +168,12 @@ def callback_handler(call):
         mensaje = f"**{pack['nombre']}**\n\n{T[lang]['free_msg']}" + "\n".join([f"{i+1}. {l}" for i, l in enumerate(pack['imgs'])])
         bot.send_message(chat_id, mensaje, parse_mode="Markdown")
 
-    # 5. Menú VIP (Lee los botones de tu PACKS_VIP automáticamente)
+    # 5. Menú VIP (Lee los botones automáticamente)
     elif data == "menu_vip":
         markup = types.InlineKeyboardMarkup(row_width=1)
         for key, pack in PACKS_VIP.items():
-            markup.add(types.InlineKeyboardButton(f"{pack['nombre']} - ${pack['precio']}", callback_query_data=f"paymenu_{key}"))
-        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="back_main"))
+            markup.add(types.InlineKeyboardButton(f"{pack['nombre']} - ${pack['precio']}", callback_data=f"paymenu_{key}"))
+        markup.add(types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="back_main"))
         bot.edit_message_text(T[lang]["menu_vip"], chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
     # 6. Selección de Método de Pago (El Paso Intermedio)
@@ -181,15 +181,15 @@ def callback_handler(call):
         item_id = data.replace("paymenu_", "")
         pack = PACKS_VIP[item_id]
         
-        # Calcular estrellas automáticamente basado en tu precio en USD (1 USD = 50 estrellas)
+        # Calcular estrellas automáticamente
         precio_usd = float(pack["precio"])
         stars_p = int(precio_usd * 50)
         
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
-            types.InlineKeyboardButton(f"{T[lang]['btn_stars']} ({stars_p} ⭐️)", callback_query_data=f"stars_{item_id}"),
-            types.InlineKeyboardButton(f"{T[lang]['btn_usdt']} (${precio_usd:.2f})", callback_query_data=f"crypto_{item_id}"),
-            types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="menu_vip")
+            types.InlineKeyboardButton(f"{T[lang]['btn_stars']} ({stars_p} ⭐️)", callback_data=f"stars_{item_id}"),
+            types.InlineKeyboardButton(f"{T[lang]['btn_usdt']} (${precio_usd:.2f})", callback_data=f"crypto_{item_id}"),
+            types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="menu_vip")
         )
         bot.edit_message_text(f"💳 {T[lang]['pay_title']} **{pack['nombre']}**:", chat_id, msg_id, parse_mode="Markdown", reply_markup=markup)
 
@@ -199,7 +199,6 @@ def callback_handler(call):
         pack = PACKS_VIP[item_id]
         stars_p = int(float(pack["precio"]) * 50)
         
-        # Limpiamos el nombre para que Telegram no arroje error por emojis muy largos en el título de la factura
         titulo_limpio = pack['nombre'].replace("💎", "").strip()[:32] 
         
         bot.send_invoice(chat_id, title=titulo_limpio, description="VIP Access 🔓", provider_token="", currency="XTR", 
@@ -218,14 +217,13 @@ def callback_handler(call):
             markup = types.InlineKeyboardMarkup(row_width=1)
             markup.add(
                 types.InlineKeyboardButton(T[lang]["btn_pay_url"], url=pay_url),
-                types.InlineKeyboardButton(T[lang]["btn_verify"], callback_query_data=f"verify_{invoice_id}_{item_id}"),
-                types.InlineKeyboardButton(T[lang]["btn_back"], callback_query_data="menu_vip")
+                types.InlineKeyboardButton(T[lang]["btn_verify"], callback_data=f"verify_{invoice_id}_{item_id}"),
+                types.InlineKeyboardButton(T[lang]["btn_back"], callback_data="menu_vip")
             )
             bot.edit_message_text(T[lang]["pay_crypto"], chat_id, msg_id, reply_markup=markup)
 
     # 9. Verificar Pago USDT
     elif data.startswith("verify_"):
-        # Extraemos el ID de la factura y el item_id (ej. v1, v11)
         partes = data.split("_")
         invoice_id = partes[1]
         item_id = partes[2]
@@ -233,7 +231,7 @@ def callback_handler(call):
         if check_crypto_payment(invoice_id):
             link = PACKS_VIP[item_id]['link']
             bot.send_message(chat_id, f"{T[lang]['success']}{link}", parse_mode="Markdown")
-            bot.edit_message_text("✅ Access Granted.", chat_id, msg_id) # Borra los botones
+            bot.edit_message_text("✅ Access Granted.", chat_id, msg_id) 
         else:
             bot.answer_callback_query(call.id, T[lang]["wait"], show_alert=True)
 
