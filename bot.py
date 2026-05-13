@@ -15,6 +15,7 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 user_langs = {} # Memoria temporal de idioma por usuario
+usuarios_vistos = set() # Memoria de visitantes únicos
 
 # ==========================================
 # 2. BASE DE DATOS (GRATIS Y VIP)
@@ -129,13 +130,19 @@ def index():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    usuarios_vistos.add(message.chat.id)
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
         types.InlineKeyboardButton("🇺🇸 English", callback_data="lang_en"),
         types.InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es")
     )
     bot.send_message(message.chat.id, "Select your language / Selecciona tu idioma:", reply_markup=markup)
-
+    
+@bot.message_handler(commands=['stats'])
+def ver_estadisticas(message):
+    mi_id_admin = 7706098665 # Reemplaza por tu ID numérico de Telegram
+    if message.chat.id == mi_id_admin:
+        bot.send_message(message.chat.id, f"📊 **ESTADÍSTICAS DEL BOT**\n👥 Visitantes únicos actuales: **{len(usuarios_vistos)}**", parse_mode="Markdown")
 def show_main_menu(chat_id, message_id, lang):
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
